@@ -17,8 +17,17 @@ export function DashboardOverview() {
     const load = async () => {
       const { data: p } = await supabase.from("profiles").select("*").eq("user_id", user.id).single();
       setProfile(p);
-      const { count: sc } = await supabase.from("sms_logs").select("*", { count: "exact", head: true }).eq("user_id", user.id);
-      setSmsCount(sc || 0);
+      // Calculate actual SMS sent by counting recipients (comma-separated)
+      const { data: smsData } = await supabase
+        .from("sms_logs")
+        .select("recipient")
+        .eq("user_id", user.id);
+      const totalSms = smsData?.reduce((sum, log) => {
+        // Count commas + 1 to get number of recipients
+        const recipientCount = log.recipient ? (log.recipient.split(',').length) : 1;
+        return sum + recipientCount;
+      }, 0) || 0;
+      setSmsCount(totalSms);
       const { count: ac } = await supabase.from("api_keys").select("*", { count: "exact", head: true }).eq("user_id", user.id);
       setApiKeyCount(ac || 0);
     };

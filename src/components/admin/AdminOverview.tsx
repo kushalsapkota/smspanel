@@ -22,28 +22,34 @@ export function AdminOverview() {
 
       const totalRevenue = approvedTopups?.reduce((sum, t) => sum + parseFloat(String(t.amount || 0)), 0) || 0;
 
-      // Total Delivered SMS = SMS with status "sent"
-      const { count: deliveredSms } = await supabase
+      // Calculate SMS counts from recipient field (comma-separated)
+      const countRecipients = (recipient: string) => recipient ? recipient.split(',').length : 1;
+
+      // Total Delivered SMS = Sum of recipients where status is "sent"
+      const { data: deliveredData } = await supabase
         .from("sms_logs")
-        .select("*", { count: "exact", head: true })
+        .select("recipient")
         .eq("status", "sent");
+      const deliveredSms = deliveredData?.reduce((sum, log) => sum + countRecipients(log.recipient), 0) || 0;
 
-      // Total Not Delivered = SMS with status "failed"
-      const { count: notDeliveredSms } = await supabase
+      // Total Not Delivered = Sum of recipients where status is "failed"
+      const { data: failedData } = await supabase
         .from("sms_logs")
-        .select("*", { count: "exact", head: true })
+        .select("recipient")
         .eq("status", "failed");
+      const notDeliveredSms = failedData?.reduce((sum, log) => sum + countRecipients(log.recipient), 0) || 0;
 
-      // Total Hits = All SMS (delivered + not delivered + pending)
-      const { count: totalHits } = await supabase
+      // Total Hits = Sum of all recipients
+      const { data: allData } = await supabase
         .from("sms_logs")
-        .select("*", { count: "exact", head: true });
+        .select("recipient");
+      const totalHits = allData?.reduce((sum, log) => sum + countRecipients(log.recipient), 0) || 0;
 
       setStats({
         totalRevenue,
-        deliveredSms: deliveredSms || 0,
-        notDeliveredSms: notDeliveredSms || 0,
-        totalHits: totalHits || 0
+        deliveredSms,
+        notDeliveredSms,
+        totalHits
       });
     };
     load();

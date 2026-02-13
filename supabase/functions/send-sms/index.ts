@@ -136,6 +136,7 @@ serve(async (req) => {
       message: text,
       status: smsStatus,
       cost: smsStatus === "sent" ? cost : 0,
+      recipient_count: numbers.length,
       aakash_response: aakashData,
     });
 
