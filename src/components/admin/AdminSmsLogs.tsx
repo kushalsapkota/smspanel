@@ -14,9 +14,46 @@ export function AdminSmsLogs() {
   const [logs, setLogs] = useState<any[]>([]);
 
   useEffect(() => {
-    supabase.from("sms_logs").select("*, profiles!sms_logs_user_id_fkey(full_name)")
-      .order("created_at", { ascending: false }).limit(200)
-      .then(({ data }) => setLogs(data || []));
+    const fetchLogs = async () => {
+      // 1. Fetch SMS logs
+      const { data: smsData, error: smsError } = await supabase
+        .from("sms_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200);
+
+      if (smsError) {
+        console.error("Error fetching SMS logs:", smsError);
+        return;
+      }
+
+      if (!smsData || smsData.length === 0) {
+        setLogs([]);
+        return;
+      }
+
+      // 2. Fetch profiles for these logs
+      const userIds = Array.from(new Set(smsData.map(log => log.user_id)));
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", userIds);
+
+      // 3. Map profiles to logs
+      const profilesMap = (profilesData || []).reduce((acc: any, profile: any) => {
+        acc[profile.user_id] = profile;
+        return acc;
+      }, {});
+
+      const mergedLogs = smsData.map(log => ({
+        ...log,
+        profiles: profilesMap[log.user_id] || { full_name: "Unknown" }
+      }));
+
+      setLogs(mergedLogs);
+    };
+
+    fetchLogs();
   }, []);
 
   const statusColor = (s: string) => {

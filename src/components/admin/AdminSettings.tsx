@@ -25,22 +25,9 @@ export function AdminSettings() {
       setSettings(map);
     });
 
-    // Load notification
-    loadNotification();
   }, []);
 
-  const loadNotification = async () => {
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (data) {
-      setNotification({ id: data.id, message: data.message, is_enabled: data.is_enabled });
-    }
-  };
+  // Notifications feature disabled - table doesn't exist
 
   const updateSetting = (key: string, value: string) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -60,42 +47,7 @@ export function AdminSettings() {
     }
   };
 
-  const saveNotification = async () => {
-    setNotificationLoading(true);
-    try {
-      if (notification.id) {
-        // Update existing
-        await supabase
-          .from("notifications")
-          .update({
-            message: notification.message,
-            is_enabled: notification.is_enabled,
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", notification.id);
-      } else {
-        // Create new
-        const { data } = await supabase
-          .from("notifications")
-          .insert({
-            message: notification.message,
-            is_enabled: notification.is_enabled,
-            created_by: user?.id
-          })
-          .select()
-          .single();
-
-        if (data) {
-          setNotification(prev => ({ ...prev, id: data.id }));
-        }
-      }
-      toast({ title: "Notification Saved", description: "Users will see the updated message" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setNotificationLoading(false);
-    }
-  };
+  // Notifications feature disabled - saveNotification removed
 
   const fields = [
     { key: "aakash_auth_token", label: "Aakash SMS Auth Token", desc: "Your auth token from Aakash SMS API Service" },
@@ -136,47 +88,60 @@ export function AdminSettings() {
         </CardContent>
       </Card>
 
-      {/* Notification Settings */}
+      {/* Notification Settings - DISABLED (table doesn't exist)
       <Card className="glass">
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2"><Bell className="h-5 w-5 text-primary" /> User Notification</CardTitle>
           <CardDescription>Set a scrolling message banner for all users</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="notification-message">Notification Message</Label>
-            <Textarea
-              id="notification-message"
-              placeholder="Enter message to display to users..."
-              value={notification.message}
-              onChange={(e) => setNotification(prev => ({ ...prev, message: e.target.value }))}
-              rows={3}
-              className="resize-none"
-            />
-            <p className="text-xs text-muted-foreground">This message will scroll across the top of the user dashboard</p>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="notification-enabled">Enable Notification</Label>
-              <p className="text-xs text-muted-foreground">Show notification banner to users</p>
-            </div>
-            <Switch
-              id="notification-enabled"
-              checked={notification.is_enabled}
-              onCheckedChange={(checked) => setNotification(prev => ({ ...prev, is_enabled: checked }))}
-            />
-          </div>
-
-          <Button
-            onClick={saveNotification}
-            className="gradient-primary text-primary-foreground w-full"
-            disabled={notificationLoading || !notification.message.trim()}
-          >
-            <Save className="h-4 w-4 mr-2" /> {notificationLoading ? "Saving..." : "Save Notification"}
-          </Button>
+          ...notification UI removed...
         </CardContent>
       </Card>
+      */}
     </div>
+  );
+}
+<Card className="glass">
+  <CardHeader>
+    <CardTitle className="font-display flex items-center gap-2"><Bell className="h-5 w-5 text-primary" /> User Notification</CardTitle>
+    <CardDescription>Set a scrolling message banner for all users</CardDescription>
+  </CardHeader>
+  <CardContent className="space-y-4">
+    <div className="space-y-2">
+      <Label htmlFor="notification-message">Notification Message</Label>
+      <Textarea
+        id="notification-message"
+        placeholder="Enter message to display to users..."
+        value={notification.message}
+        onChange={(e) => setNotification(prev => ({ ...prev, message: e.target.value }))}
+        rows={3}
+        className="resize-none"
+      />
+      <p className="text-xs text-muted-foreground">This message will scroll across the top of the user dashboard</p>
+    </div>
+
+    <div className="flex items-center justify-between">
+      <div className="space-y-0.5">
+        <Label htmlFor="notification-enabled">Enable Notification</Label>
+        <p className="text-xs text-muted-foreground">Show notification banner to users</p>
+      </div>
+      <Switch
+        id="notification-enabled"
+        checked={notification.is_enabled}
+        onCheckedChange={(checked) => setNotification(prev => ({ ...prev, is_enabled: checked }))}
+      />
+    </div>
+
+    <Button
+      onClick={saveNotification}
+      className="gradient-primary text-primary-foreground w-full"
+      disabled={notificationLoading || !notification.message.trim()}
+    >
+      <Save className="h-4 w-4 mr-2" /> {notificationLoading ? "Saving..." : "Save Notification"}
+    </Button>
+  </CardContent>
+</Card>
+    </div >
   );
 }
