@@ -6,6 +6,44 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
 };
 
+// SMS Provider: Aakash SMS (Nepal)
+async function sendViaAakash(authToken: string, recipient: string, message: string) {
+  const response = await fetch("https://sms.aakashsms.com/sms/v3/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      auth_token: authToken,
+      to: recipient,
+      text: message,
+    }),
+  });
+  return await response.json();
+}
+
+// SMS Provider: Global ZMS (India)
+async function sendViaGlobalZMS(
+  apiToken: string,
+  senderId: string,
+  recipient: string,
+  message: string
+) {
+  const response = await fetch("https://globalzms.com/api/http/sms/send", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    },
+    body: JSON.stringify({
+      api_token: apiToken,
+      recipient: recipient,
+      sender_id: senderId,
+      type: "plain",
+      message: message,
+    }),
+  });
+  return await response.json();
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -57,8 +95,13 @@ serve(async (req) => {
       });
     }
 
-    // Get user profile
-    const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", userId).single();
+    // Get user profile with gateway assignment
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*, sms_gateway, country")
+      .eq("user_id", userId)
+      .single();
+
     if (!profile || !profile.is_active) {
       return new Response(JSON.stringify({ error: true, message: "Account inactive" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -80,7 +123,7 @@ serve(async (req) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: tgMap.telegram_chat_id,
-            text: `🚫 *Blacklisted Content Detected*\nUser: ${userId}\nBlocked word: "${blocked.word}"\nMessage: ${text.substring(0, 100)}`,
+            text: `🚫 *Blacklisted Content Detected*\\nUser: ${userId}\\nBlocked word: "${blocked.word}"\\nMessage: ${text.substring(0, 100)}`,
             parse_mode: "Markdown",
           }),
         });
@@ -100,27 +143,53 @@ serve(async (req) => {
       });
     }
 
-    // Get Aakash token
-    const { data: aakashSetting } = await supabase.from("settings").select("value").eq("key", "aakash_auth_token").single();
-    if (!aakashSetting?.value) {
-      return new Response(JSON.stringify({ error: true, message: "SMS service not configured" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Determine which gateway to use based on user's assignment
+    const gateway = profile.sms_gateway || 'aakash';
+    let gatewayResponse: any;
+    let smsStatus: string;
+
+    if (gateway === 'globalzms') {
+      // Get Global ZMS settings
+      const { data: globalzmsSettings } = await supabase
+        .from("settings")
+        .select("*")
+        .in("key", ["globalzms_api_token", "globalzms_sender_id"]);
+
+      const settingsMap: Record<string, string> = {};
+      globalzmsSettings?.forEach((s: any) => { settingsMap[s.key] = s.value; });
+
+      if (!settingsMap.globalzms_api_token) {
+        return new Response(JSON.stringify({ error: true, message: "Global ZMS not configured" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Send via Global ZMS
+      gatewayResponse = await sendViaGlobalZMS(
+        settingsMap.globalzms_api_token,
+        settingsMap.globalzms_sender_id || "SMS",
+        to,
+        text
+      );
+      smsStatus = gatewayResponse.status === "success" ? "sent" : "failed";
+    } else {
+      // Get Aakash token
+      const { data: aakashSetting } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "aakash_auth_token")
+        .single();
+
+      if (!aakashSetting?.value) {
+        return new Response(JSON.stringify({ error: true, message: "Aakash SMS not configured" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Send via Aakash SMS
+      gatewayResponse = await sendViaAakash(aakashSetting.value, to, text);
+      smsStatus = gatewayResponse.error === false ? "sent" : "failed";
     }
-
-    // Send via Aakash SMS
-    const aakashResponse = await fetch("https://sms.aakashsms.com/sms/v3/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        auth_token: aakashSetting.value,
-        to: to,
-        text: text,
-      }),
-    });
-
-    const aakashData = await aakashResponse.json();
-    const smsStatus = aakashData.error === false ? "sent" : "failed";
 
     // Deduct balance only on success
     if (smsStatus === "sent") {
@@ -129,7 +198,7 @@ serve(async (req) => {
       }).eq("user_id", userId);
     }
 
-    // Log the SMS
+    // Log the SMS with gateway information
     await supabase.from("sms_logs").insert({
       user_id: userId,
       recipient: to,
@@ -137,13 +206,15 @@ serve(async (req) => {
       status: smsStatus,
       cost: smsStatus === "sent" ? cost : 0,
       recipient_count: numbers.length,
-      aakash_response: aakashData,
+      gateway_used: gateway,
+      gateway_response: gatewayResponse,
     });
 
     return new Response(JSON.stringify({
-      error: aakashData.error,
-      message: aakashData.message || (smsStatus === "sent" ? "SMS sent successfully" : "Failed to send"),
-      data: aakashData.data,
+      error: smsStatus === "failed",
+      message: smsStatus === "sent" ? "SMS sent successfully" : (gatewayResponse.message || "Failed to send"),
+      data: gatewayResponse.data || gatewayResponse,
+      gateway: gateway,
     }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

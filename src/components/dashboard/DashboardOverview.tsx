@@ -32,6 +32,56 @@ export function DashboardOverview() {
       setApiKeyCount(ac || 0);
     };
     load();
+
+    // Set up real-time subscription for profile updates (balance changes)
+    const profileChannel = supabase
+      .channel(`profile-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          // Update profile with new data (including updated balance)
+          setProfile(payload.new);
+        }
+      )
+      .subscribe();
+
+    // Set up real-time subscription for SMS logs (SMS count changes)
+    const smsLogsChannel = supabase
+      .channel(`sms-logs-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'sms_logs',
+          filter: `user_id=eq.${user.id}`
+        },
+        async () => {
+          // Recalculate SMS count when new SMS is logged
+          const { data: smsData } = await supabase
+            .from("sms_logs")
+            .select("recipient")
+            .eq("user_id", user.id);
+          const totalSms = smsData?.reduce((sum, log) => {
+            const recipientCount = log.recipient ? (log.recipient.split(',').length) : 1;
+            return sum + recipientCount;
+          }, 0) || 0;
+          setSmsCount(totalSms);
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      supabase.removeChannel(profileChannel);
+      supabase.removeChannel(smsLogsChannel);
+    };
   }, [user]);
 
   const stats = [

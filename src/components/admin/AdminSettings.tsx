@@ -99,6 +99,8 @@ export function AdminSettings() {
 
   const fields = [
     { key: "aakash_auth_token", label: "Aakash SMS Auth Token", desc: "Your auth token from Aakash SMS API Service" },
+    { key: "globalzms_api_token", label: "Global ZMS API Token", desc: "Your API token from Global ZMS SMS Service" },
+    { key: "globalzms_sender_id", label: "Global ZMS Sender ID", desc: "Sender ID for Global ZMS (alphanumeric, max 11 chars)" },
     { key: "telegram_bot_token", label: "Telegram Bot Token", desc: "Bot token from @BotFather" },
     { key: "telegram_chat_id", label: "Telegram Chat ID", desc: "Chat/Group ID for notifications" },
     { key: "default_rate_per_sms", label: "Default Rate Per SMS (€)", desc: "Default rate for new users" },

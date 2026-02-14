@@ -16,6 +16,8 @@ export function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editRate, setEditRate] = useState<string>("");
+  const [editCountry, setEditCountry] = useState<string>("");
+  const [editGateway, setEditGateway] = useState<string>("");
 
   useEffect(() => {
     loadUsers();
@@ -62,17 +64,21 @@ export function AdminUsers() {
     loadUsers();
   };
 
-  const startEditRate = (userId: string, currentRate: number) => {
+  const startEdit = (userId: string, currentRate: number, currentCountry: string, currentGateway: string) => {
     setEditingUserId(userId);
     setEditRate(currentRate.toString());
+    setEditCountry(currentCountry || "Nepal");
+    setEditGateway(currentGateway || "aakash");
   };
 
-  const cancelEditRate = () => {
+  const cancelEdit = () => {
     setEditingUserId(null);
     setEditRate("");
+    setEditCountry("");
+    setEditGateway("");
   };
 
-  const saveRate = async (userId: string) => {
+  const saveUserSettings = async (userId: string) => {
     const rate = parseFloat(editRate);
 
     if (isNaN(rate) || rate < 0) {
@@ -82,7 +88,11 @@ export function AdminUsers() {
 
     const { error } = await supabase
       .from("profiles")
-      .update({ rate_per_sms: rate })
+      .update({
+        rate_per_sms: rate,
+        country: editCountry,
+        sms_gateway: editGateway
+      })
       .eq("user_id", userId);
 
     if (error) {
@@ -91,12 +101,14 @@ export function AdminUsers() {
     }
 
     toast({
-      title: "Rate Updated",
-      description: `SMS rate updated to ${formatCurrency(rate)}`
+      title: "Settings Updated",
+      description: `User settings updated successfully`
     });
 
     setEditingUserId(null);
     setEditRate("");
+    setEditCountry("");
+    setEditGateway("");
     loadUsers();
   };
 
@@ -117,6 +129,8 @@ export function AdminUsers() {
               <TableRow>
                 <TableHead>User</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Country</TableHead>
+                <TableHead>Gateway</TableHead>
                 <TableHead className="text-right">Balance</TableHead>
                 <TableHead className="text-right">Rate/SMS</TableHead>
                 <TableHead>Status</TableHead>
@@ -127,13 +141,13 @@ export function AdminUsers() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                     Loading users...
                   </TableCell>
                 </TableRow>
               ) : users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                     No users found
                   </TableCell>
                 </TableRow>
@@ -142,7 +156,49 @@ export function AdminUsers() {
                   <TableRow key={user.user_id}>
                     <TableCell className="font-medium">{user.full_name || "Unknown"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
+
+                    {/* Country Column */}
+                    <TableCell>
+                      {editingUserId === user.user_id ? (
+                        <select
+                          value={editCountry}
+                          onChange={(e) => setEditCountry(e.target.value)}
+                          className="w-full h-8 px-2 rounded border bg-background text-sm"
+                        >
+                          <option value="Nepal">Nepal</option>
+                          <option value="India">India</option>
+                          <option value="Bangladesh">Bangladesh</option>
+                          <option value="Pakistan">Pakistan</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      ) : (
+                        <Badge variant="outline" className="bg-info/10 text-info border-info/20">
+                          {user.country || "Nepal"}
+                        </Badge>
+                      )}
+                    </TableCell>
+
+                    {/* Gateway Column */}
+                    <TableCell>
+                      {editingUserId === user.user_id ? (
+                        <select
+                          value={editGateway}
+                          onChange={(e) => setEditGateway(e.target.value)}
+                          className="w-full h-8 px-2 rounded border bg-background text-sm"
+                        >
+                          <option value="aakash">Aakash SMS</option>
+                          <option value="globalzms">Global ZMS</option>
+                        </select>
+                      ) : (
+                        <Badge variant="outline" className={user.sms_gateway === 'globalzms' ? "bg-primary/10 text-primary border-primary/20" : "bg-success/10 text-success border-success/20"}>
+                          {user.sms_gateway === 'globalzms' ? 'Global ZMS' : 'Aakash SMS'}
+                        </Badge>
+                      )}
+                    </TableCell>
+
                     <TableCell className="text-right font-semibold">{formatCurrency(user.balance)}</TableCell>
+
+                    {/* Rate Column */}
                     <TableCell className="text-right">
                       {editingUserId === user.user_id ? (
                         <div className="flex items-center justify-end gap-2">
@@ -153,12 +209,11 @@ export function AdminUsers() {
                             value={editRate}
                             onChange={(e) => setEditRate(e.target.value)}
                             className="w-28 h-8 text-right"
-                            autoFocus
                           />
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => saveRate(user.user_id)}
+                            onClick={() => saveUserSettings(user.user_id)}
                             className="h-8 w-8 p-0 text-success hover:text-success"
                           >
                             <Save className="h-4 w-4" />
@@ -166,7 +221,7 @@ export function AdminUsers() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={cancelEditRate}
+                            onClick={cancelEdit}
                             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                           >
                             <X className="h-4 w-4" />
@@ -178,7 +233,7 @@ export function AdminUsers() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => startEditRate(user.user_id, user.rate_per_sms)}
+                            onClick={() => startEdit(user.user_id, user.rate_per_sms, user.country, user.sms_gateway)}
                             className="h-8 w-8 p-0"
                           >
                             <Edit2 className="h-4 w-4" />
@@ -186,6 +241,7 @@ export function AdminUsers() {
                         </div>
                       )}
                     </TableCell>
+
                     <TableCell>
                       <Badge
                         variant="outline"
