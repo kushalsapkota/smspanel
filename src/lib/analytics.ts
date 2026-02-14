@@ -81,10 +81,24 @@ export async function calculateTotalEarnings(): Promise<number> {
 export async function getEarningsPerUser(): Promise<EarningsData["byUser"]> {
     const { data: logs, error } = await supabase
         .from("sms_logs")
-        .select("user_id, cost, profiles!sms_logs_user_id_fkey(full_name)")
+        .select("user_id, cost")
         .eq("status", "sent");
 
     if (error || !logs) return [];
+
+    // Get unique user IDs
+    const userIds = [...new Set(logs.map(log => log.user_id))];
+
+    // Fetch profiles separately
+    const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", userIds);
+
+    const profileMap = (profiles || []).reduce((acc: any, p: any) => {
+        acc[p.user_id] = p.full_name || "Unknown";
+        return acc;
+    }, {});
 
     // Group by user
     const userMap = new Map<string, { name: string; spent: number }>();
@@ -92,7 +106,7 @@ export async function getEarningsPerUser(): Promise<EarningsData["byUser"]> {
     logs.forEach((log: any) => {
         const userId = log.user_id;
         const cost = parseFloat(log.cost || "0");
-        const name = log.profiles?.full_name || "Unknown";
+        const name = profileMap[userId] || "Unknown";
 
         if (userMap.has(userId)) {
             userMap.get(userId)!.spent += cost;

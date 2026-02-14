@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
-import { MessageSquare, LayoutDashboard, Users, Wallet, FileText, Ban, Settings, LogOut, ArrowLeft, BarChart3, TrendingUp } from "lucide-react";
+import { MessageSquare, LayoutDashboard, Users, Wallet, FileText, Ban, Settings, LogOut, ArrowLeft, BarChart3, TrendingUp, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ const navItems = [
   { id: "charts", label: "Charts", icon: BarChart3 },
   { id: "users", label: "Users", icon: Users },
   { id: "topups", label: "Top-up Requests", icon: Wallet },
+  { id: "balance", label: "Balance Adjustment", icon: DollarSign },
   { id: "sms-logs", label: "SMS Logs", icon: FileText },
   { id: "blacklist", label: "Blacklist", icon: Ban },
   { id: "settings", label: "Settings", icon: Settings },

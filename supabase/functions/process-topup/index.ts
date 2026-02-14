@@ -42,21 +42,12 @@ serve(async (req) => {
     const { request_id, status, user_id, amount } = await req.json();
 
     // Update topup request
+    // Note: Balance is automatically updated by the database trigger (handle_topup_approval)
     await supabase.from("topup_requests").update({
       status,
       processed_by: user.id,
       processed_at: new Date().toISOString(),
     }).eq("id", request_id);
-
-    // If approved, add balance
-    if (status === "approved") {
-      const { data: profile } = await supabase.from("profiles").select("balance").eq("user_id", user_id).single();
-      if (profile) {
-        await supabase.from("profiles").update({
-          balance: parseFloat(profile.balance) + parseFloat(amount),
-        }).eq("user_id", user_id);
-      }
-    }
 
     // Send Telegram notification
     const { data: tgSettings } = await supabase.from("settings").select("*").in("key", ["telegram_bot_token", "telegram_chat_id"]);
@@ -66,7 +57,7 @@ serve(async (req) => {
     if (tgMap.telegram_bot_token && tgMap.telegram_chat_id) {
       const emoji = status === "approved" ? "✅" : "❌";
       const msg = `${emoji} *Top-Up ${status.charAt(0).toUpperCase() + status.slice(1)}*\nUser ID: \`${user_id}\`\nAmount: Rs. ${amount}\nProcessed by: ${user.email}`;
-      
+
       await fetch(`https://api.telegram.org/bot${tgMap.telegram_bot_token}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -10,6 +10,7 @@ import { AdminTopups } from "@/components/admin/AdminTopups";
 import { AdminSmsLogs } from "@/components/admin/AdminSmsLogs";
 import { AdminBlacklist } from "@/components/admin/AdminBlacklist";
 import { AdminSettings } from "@/components/admin/AdminSettings";
+import { AdminBalanceAdjustment } from "@/components/admin/AdminBalanceAdjustment";
 
 const Admin = () => {
   const { user, isAdmin, loading } = useAuth();
@@ -27,6 +28,7 @@ const Admin = () => {
       case "topups": return <AdminTopups />;
       case "sms-logs": return <AdminSmsLogs />;
       case "blacklist": return <AdminBlacklist />;
+      case "balance": return <AdminBalanceAdjustment />;
       case "settings": return <AdminSettings />;
       default: return <AdminOverview />;
     }
