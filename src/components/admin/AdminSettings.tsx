@@ -101,7 +101,9 @@ export function AdminSettings() {
     { key: "aakash_auth_token", label: "Aakash SMS Auth Token", desc: "Your auth token from Aakash SMS API Service" },
     { key: "telegram_bot_token", label: "Telegram Bot Token", desc: "Bot token from @BotFather" },
     { key: "telegram_chat_id", label: "Telegram Chat ID", desc: "Chat/Group ID for notifications" },
-    { key: "default_rate_per_sms", label: "Default Rate Per SMS (€)", desc: "Default rate for new users" },
+    { key: "default_rate_per_sms", label: "Default Rate Per SMS", desc: "Default rate for new users" },
+    { key: "currency_symbol", label: "Currency Symbol", desc: "Symbol to display (e.g., $, €, ₹, ₨)" },
+    { key: "currency_code", label: "Currency Code", desc: "3-letter code (e.g., USD, EUR, INR, NPR)" },
   ];
 
   return (

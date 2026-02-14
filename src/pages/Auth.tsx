@@ -5,16 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, Mail, Lock, User } from "lucide-react";
+import { MessageSquare, Mail, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -22,16 +20,8 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (isLogin) {
-        await signIn(email, password);
-        navigate("/dashboard");
-      } else {
-        await signUp(email, password, fullName);
-        toast({
-          title: "Account created!",
-          description: "Please check your email to verify your account.",
-        });
-      }
+      await signIn(email, password);
+      navigate("/dashboard");
     } catch (err: any) {
       toast({
         title: "Error",
@@ -57,29 +47,13 @@ const Auth = () => {
 
         <Card className="glass">
           <CardHeader className="text-center">
-            <CardTitle className="font-display">{isLogin ? "Welcome Back" : "Create Account"}</CardTitle>
+            <CardTitle className="font-display">Welcome Back</CardTitle>
             <CardDescription>
-              {isLogin ? "Sign in to your account" : "Register for a new account"}
+              Sign in to your account
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {!isLogin && (
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="name"
-                      placeholder="Your name"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
@@ -112,16 +86,13 @@ const Auth = () => {
                 </div>
               </div>
               <Button type="submit" className="w-full gradient-primary text-primary-foreground" disabled={loading}>
-                {loading ? "Processing..." : isLogin ? "Sign In" : "Create Account"}
+                {loading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
             <div className="mt-4 text-center">
-              <button
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                {isLogin ? "Don't have an account? Register" : "Already have an account? Sign in"}
-              </button>
+              <p className="text-sm text-muted-foreground">
+                Contact your administrator for account access
+              </p>
             </div>
           </CardContent>
         </Card>

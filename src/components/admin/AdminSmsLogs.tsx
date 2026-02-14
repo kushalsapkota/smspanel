@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrency } from "@/hooks/useCurrency";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ import { Search } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 
 export function AdminSmsLogs() {
+  const { currency } = useCurrency();
   const [logs, setLogs] = useState<any[]>([]);
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export function AdminSmsLogs() {
                   <TableCell className="font-medium">{(log as any).profiles?.full_name || "—"}</TableCell>
                   <TableCell className="font-mono text-sm">{log.recipient}</TableCell>
                   <TableCell className="text-sm max-w-[200px] truncate">{log.message}</TableCell>
-                  <TableCell className="text-sm">{formatCurrency(log.cost)}</TableCell>
+                  <TableCell className="text-sm">{formatCurrency(log.cost, currency.symbol)}</TableCell>
                   <TableCell><Badge variant="outline" className={statusColor(log.status)}>{log.status}</Badge></TableCell>
                 </TableRow>
               ))}

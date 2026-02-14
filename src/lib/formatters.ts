@@ -3,21 +3,19 @@
  */
 
 /**
- * Format a number as Euro currency
+ * Format a number as currency
  * @param amount - The numeric amount to format
- * @returns Formatted string like "€1,234.56"
+ * @param currencySymbol - Optional currency symbol (default: '₹')
+ * @returns Formatted string like "₹1,234.56" or "$1,234.56"
  */
-export function formatCurrency(amount: number | string): string {
+export function formatCurrency(amount: number | string, currencySymbol: string = '₹'): string {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
 
-    if (isNaN(num)) return '€0.00';
+    if (isNaN(num)) return `${currencySymbol}0.00`;
 
-    return new Intl.NumberFormat('en-IE', {
-        style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 3,
-    }).format(num);
+    // Format with thousand separators and 2 decimal places
+    const formatted = num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return `${currencySymbol}${formatted}`;
 }
 
 /**

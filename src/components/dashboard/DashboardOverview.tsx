@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useCurrency } from "@/hooks/useCurrency";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wallet, Send, TrendingUp, Key } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
@@ -8,6 +9,7 @@ import { NotificationBanner } from "./NotificationBanner";
 
 export function DashboardOverview() {
   const { user } = useAuth();
+  const { currency } = useCurrency();
   const [profile, setProfile] = useState<any>(null);
   const [smsCount, setSmsCount] = useState(0);
   const [apiKeyCount, setApiKeyCount] = useState(0);
@@ -85,11 +87,12 @@ export function DashboardOverview() {
   }, [user]);
 
   const stats = [
-    { label: "Balance", value: formatCurrency(profile?.balance || 0), icon: Wallet, color: "text-primary" },
+    { label: "Balance", value: formatCurrency(profile?.balance || 0, currency.symbol), icon: Wallet, color: "text-primary" },
     { label: "SMS Sent", value: smsCount.toString(), icon: Send, color: "text-info" },
-    { label: "Rate/SMS", value: formatCurrency(profile?.rate_per_sms || 0), icon: TrendingUp, color: "text-success" },
+    { label: "Rate/SMS", value: formatCurrency(profile?.rate_per_sms || 0, currency.symbol), icon: TrendingUp, color: "text-success" },
     { label: "API Keys", value: apiKeyCount.toString(), icon: Key, color: "text-warning" },
   ];
+
 
   return (
     <div>
