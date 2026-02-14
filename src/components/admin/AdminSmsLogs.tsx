@@ -35,19 +35,25 @@ export function AdminSmsLogs() {
                 <TableHead>User</TableHead>
                 <TableHead>Recipient</TableHead>
                 <TableHead>Message</TableHead>
+                <TableHead>Gateway</TableHead>
                 <TableHead>Cost</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {logs.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No SMS logs</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No SMS logs</TableCell></TableRow>
               ) : logs.map((log) => (
                 <TableRow key={log.id}>
                   <TableCell className="text-sm">{format(new Date(log.created_at), "MMM dd, HH:mm")}</TableCell>
                   <TableCell className="font-medium">{(log as any).profiles?.full_name || "—"}</TableCell>
                   <TableCell className="font-mono text-sm">{log.recipient}</TableCell>
                   <TableCell className="text-sm max-w-[200px] truncate">{log.message}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={log.gateway_used === 'globalzms' ? "bg-primary/10 text-primary border-primary/20" : "bg-success/10 text-success border-success/20"}>
+                      {log.gateway_used === 'globalzms' ? 'Global ZMS' : log.gateway_used === 'aakash' ? 'Aakash SMS' : 'Unknown'}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-sm">{formatCurrency(log.cost)}</TableCell>
                   <TableCell><Badge variant="outline" className={statusColor(log.status)}>{log.status}</Badge></TableCell>
                 </TableRow>

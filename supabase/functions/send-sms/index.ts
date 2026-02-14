@@ -98,7 +98,7 @@ serve(async (req) => {
     // Get user profile with gateway assignment
     const { data: profile } = await supabase
       .from("profiles")
-      .select("*, sms_gateway, country")
+      .select("user_id, full_name, balance, rate_per_sms, is_active, sms_gateway, country")
       .eq("user_id", userId)
       .single();
 
@@ -123,7 +123,7 @@ serve(async (req) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: tgMap.telegram_chat_id,
-            text: `🚫 *Blacklisted Content Detected*\\nUser: ${userId}\\nBlocked word: "${blocked.word}"\\nMessage: ${text.substring(0, 100)}`,
+            text: `🚫 *Blacklisted Content Detected*\\nUser: ${profile.full_name || 'Unknown'} (${userId})\\nBlocked word: "${blocked.word}"\\nMessage: ${text.substring(0, 100)}`,
             parse_mode: "Markdown",
           }),
         });
