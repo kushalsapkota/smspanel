@@ -20,13 +20,53 @@ async function sendViaAakash(authToken: string, recipient: string, message: stri
   return await response.json();
 }
 
-// SMS Provider: Global ZMS (India)
+// Helper function to format phone numbers with country code
+function formatPhoneNumber(number: string, country: string): string {
+  // Remove any spaces, dashes, or special characters
+  const cleaned = number.replace(/[\s\-\(\)]/g, '');
+
+  // If already has +, return as is
+  if (cleaned.startsWith('+')) {
+    return cleaned;
+  }
+
+  // Add country code based on country
+  const countryCodeMap: Record<string, string> = {
+    'India': '91',
+    'Nepal': '977',
+    'Bangladesh': '880',
+    'Pakistan': '92',
+  };
+
+  const countryCode = countryCodeMap[country] || '91'; // Default to India
+
+  // If number starts with country code without +, add +
+  if (cleaned.startsWith(countryCode)) {
+    return `+${cleaned}`;
+  }
+
+  // If number starts with 0, remove it and add country code
+  if (cleaned.startsWith('0')) {
+    return `+${countryCode}${cleaned.substring(1)}`;
+  }
+
+  // Otherwise, just add country code
+  return `+${countryCode}${cleaned}`;
+}
+
+// SMS Provider: Global ZMS (India & International)
 async function sendViaGlobalZMS(
   apiToken: string,
   senderId: string,
   recipient: string,
-  message: string
+  message: string,
+  country: string = 'India'
 ) {
+  // Format all recipients with country code
+  const recipients = recipient.split(',')
+    .map(num => formatPhoneNumber(num.trim(), country))
+    .join(',');
+
   const response = await fetch("https://globalzms.com/api/http/sms/send", {
     method: "POST",
     headers: {
@@ -35,13 +75,16 @@ async function sendViaGlobalZMS(
     },
     body: JSON.stringify({
       api_token: apiToken,
-      recipient: recipient,
+      recipient: recipients,
       sender_id: senderId,
       type: "plain",
       message: message,
     }),
   });
-  return await response.json();
+
+  const result = await response.json();
+  console.log("[Global ZMS] Response:", result);
+  return result;
 }
 
 serve(async (req) => {
@@ -169,7 +212,8 @@ serve(async (req) => {
         settingsMap.globalzms_api_token,
         settingsMap.globalzms_sender_id || "SMS",
         to,
-        text
+        text,
+        profile.country || 'India'
       );
       smsStatus = gatewayResponse.status === "success" ? "sent" : "failed";
     } else {
