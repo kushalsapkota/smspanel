@@ -1,0 +1,10 @@
+project_id = "nsjaypfyaugzhrhoyfyf"
+
+[functions.send-sms]
+verify_jwt = false
+
+[functions.process-topup]
+verify_jwt = false
+
+[functions.telegram-notify]
+verify_jwt = false
