@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
-import { MessageSquare, LayoutDashboard, Users, Wallet, FileText, Ban, Settings, LogOut, ArrowLeft } from "lucide-react";
+import { MessageSquare, LayoutDashboard, BarChart2, LineChart, Users, Wallet, DollarSign, FileText, Ban, Settings, LogOut, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -10,8 +10,11 @@ interface AdminSidebarProps {
 
 const navItems = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "analytics", label: "Analytics", icon: BarChart2 },
+  { id: "charts", label: "Charts", icon: LineChart },
   { id: "users", label: "Users", icon: Users },
   { id: "topups", label: "Top-up Requests", icon: Wallet },
+  { id: "balance", label: "Balance Adjustment", icon: DollarSign },
   { id: "sms-logs", label: "SMS Logs", icon: FileText },
   { id: "blacklist", label: "Blacklist", icon: Ban },
   { id: "settings", label: "Settings", icon: Settings },
@@ -66,9 +69,7 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
           <LogOut className="h-4 w-4" />
           Sign Out
         </button>
-        <div className="px-3 py-2 text-xs text-sidebar-foreground/40 truncate">
-          {user?.email}
-        </div>
+        <div className="px-3 py-2 text-xs text-sidebar-foreground/40 truncate">{user?.email}</div>
       </div>
     </aside>
   );
