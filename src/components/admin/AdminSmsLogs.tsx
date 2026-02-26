@@ -24,13 +24,36 @@ export function AdminSmsLogs() {
     const from = currentPage * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
 
-    const { data, count } = await supabase
+    const { data: smsData, count } = await supabase
       .from("sms_logs")
-      .select("*, profiles!sms_logs_user_id_fkey(full_name)", { count: "exact" })
+      .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
       .range(from, to);
 
-    setLogs(data || []);
+    if (!smsData || smsData.length === 0) {
+      setLogs([]);
+      if (count !== null) setTotalCount(count);
+      setLoading(false);
+      return;
+    }
+
+    const userIds = Array.from(new Set(smsData.map(log => log.user_id)));
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("user_id, full_name")
+      .in("user_id", userIds);
+
+    const profilesMap = (profilesData || []).reduce((acc: any, profile: any) => {
+      acc[profile.user_id] = profile;
+      return acc;
+    }, {});
+
+    const mergedLogs = smsData.map(log => ({
+      ...log,
+      profiles: profilesMap[log.user_id] || { full_name: "Unknown" }
+    }));
+
+    setLogs(mergedLogs);
     if (count !== null) setTotalCount(count);
     setLoading(false);
   };
@@ -53,34 +76,36 @@ export function AdminSmsLogs() {
       </div>
       <Card className="glass">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Recipient</TableHead>
-                <TableHead>Message</TableHead>
-                <TableHead>Cost</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
-              ) : logs.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No SMS logs</TableCell></TableRow>
-              ) : logs.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell className="text-sm">{format(new Date(log.created_at), "MMM dd, HH:mm")}</TableCell>
-                  <TableCell className="font-medium">{(log as any).profiles?.full_name || "—"}</TableCell>
-                  <TableCell className="font-mono text-sm">{log.recipient}</TableCell>
-                  <TableCell className="text-sm max-w-[200px] truncate">{log.message}</TableCell>
-                  <TableCell className="text-sm">Rs. {log.cost}</TableCell>
-                  <TableCell><Badge variant="outline" className={statusColor(log.status)}>{log.status}</Badge></TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead>Recipient</TableHead>
+                  <TableHead>Message</TableHead>
+                  <TableHead>Cost</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
+                ) : logs.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No SMS logs</TableCell></TableRow>
+                ) : logs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell className="text-sm">{format(new Date(log.created_at), "MMM dd, HH:mm")}</TableCell>
+                    <TableCell className="font-medium">{(log as any).profiles?.full_name || "—"}</TableCell>
+                    <TableCell className="font-mono text-sm">{log.recipient}</TableCell>
+                    <TableCell className="text-sm max-w-[200px] truncate">{log.message}</TableCell>
+                    <TableCell className="text-sm">Rs. {log.cost}</TableCell>
+                    <TableCell><Badge variant="outline" className={statusColor(log.status)}>{log.status}</Badge></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

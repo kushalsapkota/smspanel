@@ -50,26 +50,28 @@ export function AdminBlacklist() {
       </Card>
       <Card className="glass">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Word</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {words.length === 0 ? (
-                <TableRow><TableCell colSpan={2} className="text-center text-muted-foreground py-8">No blocked words</TableCell></TableRow>
-              ) : words.map((w) => (
-                <TableRow key={w.id}>
-                  <TableCell className="font-mono">{w.word}</TableCell>
-                  <TableCell className="text-right">
-                    <Button size="sm" variant="ghost" className="hover:text-destructive" onClick={() => removeWord(w.id)}><Trash2 className="h-4 w-4" /></Button>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Word</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {words.length === 0 ? (
+                  <TableRow><TableCell colSpan={2} className="text-center text-muted-foreground py-8">No blocked words</TableCell></TableRow>
+                ) : words.map((w) => (
+                  <TableRow key={w.id}>
+                    <TableCell className="font-mono">{w.word}</TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" variant="ghost" className="hover:text-destructive" onClick={() => removeWord(w.id)}><Trash2 className="h-4 w-4" /></Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

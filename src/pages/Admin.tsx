@@ -38,7 +38,7 @@ const Admin = () => {
     <div className="flex min-h-screen bg-background">
       <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="flex-1 overflow-auto">
-        <div className="p-6 lg:p-8 animate-fade-in">
+        <div className="pt-20 lg:pt-0 p-4 lg:p-8 animate-fade-in">
           {renderContent()}
         </div>
       </main>

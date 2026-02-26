@@ -23,85 +23,90 @@ export function AdminAnalytics() {
         totalSpent: 0,
     });
     const [userActivity, setUserActivity] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        loadProfiles();
+        supabase.from("profiles").select("user_id, full_name, is_active").order("full_name")
+            .then(({ data }) => setProfiles(data || []));
     }, []);
 
     useEffect(() => {
         loadStats();
     }, [selectedUser]);
 
-    const loadProfiles = async () => {
-        const { data } = await supabase.from("profiles").select("user_id, full_name, is_active").order("full_name");
-        setProfiles(data || []);
-    };
-
     const loadStats = async () => {
-        // Fetch all sms_logs (just status + cost + user_id + created_at)
-        let logsQuery = supabase.from("sms_logs").select("status, cost, user_id, created_at");
-        if (selectedUser !== "all") logsQuery = logsQuery.eq("user_id", selectedUser);
-        const { data: logs } = await logsQuery;
+        setLoading(true);
 
-        const allLogs = logs || [];
-        const totalSms = allLogs.length;
-        const totalSent = allLogs.filter((l) => l.status === "sent" || l.status === "queued").length;
-        const totalFailed = allLogs.filter((l) => l.status === "failed").length;
-        const totalPending = allLogs.filter((l) => l.status === "pending").length;
-        const totalSpent = allLogs.reduce((s, l) => s + (l.cost || 0), 0);
-        const successRate = totalSms > 0 ? ((totalSent / totalSms) * 100).toFixed(1) : "0.0";
+        if (selectedUser === "all") {
+            // Use SECURITY DEFINER RPC — no 1000-row cap
+            const { data: overall } = await supabase.rpc("get_overall_sms_stats" as any);
+            const { data: userStats } = await supabase.rpc("get_user_sms_stats" as any);
+            const { count: activeUsers } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("is_active", true);
+            const { data: topups } = await supabase.from("topup_requests").select("amount").eq("status", "approved");
 
-        // Total topups
-        let topupsQuery = supabase.from("topup_requests").select("amount").eq("status", "approved");
-        if (selectedUser !== "all") topupsQuery = topupsQuery.eq("user_id", selectedUser);
-        const { data: topups } = await topupsQuery;
-        const totalTopups = (topups || []).reduce((s, t) => s + (t.amount || 0), 0);
+            const o = (overall && overall[0]) || {};
+            const totalSent = Number(o.total_sent || 0);
+            const totalSms = Number(o.total_sms || 0);
+            const totalSpent = Number(o.total_cost || 0);
+            const totalTopups = (topups || []).reduce((s: number, t: any) => s + (t.amount || 0), 0);
 
-        // Active users
-        const { count: activeUsers } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("is_active", true);
+            setStats({
+                activeUsers: activeUsers || 0,
+                totalRevenue: totalSpent,
+                totalSms,
+                successRate: totalSms > 0 ? parseFloat(((totalSent / totalSms) * 100).toFixed(1)) : 0,
+                totalSent,
+                totalFailed: Number(o.total_failed || 0),
+                totalPending: Number(o.total_pending || 0),
+                totalTopups,
+                totalSpent,
+            });
 
-        setStats({
-            activeUsers: activeUsers || 0,
-            totalRevenue: totalSpent,
-            totalSms,
-            successRate: parseFloat(successRate as string),
-            totalSent,
-            totalFailed,
-            totalPending,
-            totalTopups,
-            totalSpent,
-        });
+            setUserActivity(
+                (userStats || []).map((u: any) => ({
+                    userId: u.user_id,
+                    name: u.full_name || "Unknown",
+                    total: Number(u.total_sms),
+                    spent: Number(u.total_cost),
+                    sent: Number(u.total_sent),
+                    successRate: Number(u.total_sms) > 0
+                        ? ((Number(u.total_sent) / Number(u.total_sms)) * 100).toFixed(1)
+                        : "0.0",
+                    last: u.last_activity,
+                }))
+            );
+        } else {
+            // Per-user stats using count queries (no row fetch needed)
+            const { count: totalSms } = await supabase.from("sms_logs").select("*", { count: "exact", head: true }).eq("user_id", selectedUser);
+            const { count: totalSent } = await supabase.from("sms_logs").select("*", { count: "exact", head: true }).eq("user_id", selectedUser).in("status", ["sent", "queued"]);
+            const { count: totalFailed } = await supabase.from("sms_logs").select("*", { count: "exact", head: true }).eq("user_id", selectedUser).eq("status", "failed");
+            const { count: totalPending } = await supabase.from("sms_logs").select("*", { count: "exact", head: true }).eq("user_id", selectedUser).eq("status", "pending");
 
-        // Build per-user activity
-        const byUser: Record<string, { total: number; spent: number; sent: number; last: string; email: string; name: string }> = {};
-        for (const log of allLogs) {
-            if (!byUser[log.user_id]) byUser[log.user_id] = { total: 0, spent: 0, sent: 0, last: log.created_at, email: "", name: "" };
-            byUser[log.user_id].total++;
-            byUser[log.user_id].spent += log.cost || 0;
-            if (log.status === "sent" || log.status === "queued") byUser[log.user_id].sent++;
-            if (log.created_at > byUser[log.user_id].last) byUser[log.user_id].last = log.created_at;
+            // Cost needs sum — use rpc or fetch cost only
+            const { data: costRows } = await supabase.from("sms_logs").select("cost").eq("user_id", selectedUser);
+            const totalSpent = (costRows || []).reduce((s: number, r: any) => s + (r.cost || 0), 0);
+
+            const { data: topups } = await supabase.from("topup_requests").select("amount").eq("user_id", selectedUser).eq("status", "approved");
+            const totalTopups = (topups || []).reduce((s: number, t: any) => s + (t.amount || 0), 0);
+
+            const sm = totalSms || 0;
+            const st = totalSent || 0;
+
+            setStats({
+                activeUsers: 1,
+                totalRevenue: totalSpent,
+                totalSms: sm,
+                successRate: sm > 0 ? parseFloat(((st / sm) * 100).toFixed(1)) : 0,
+                totalSent: st,
+                totalFailed: totalFailed || 0,
+                totalPending: totalPending || 0,
+                totalTopups,
+                totalSpent,
+            });
+            setUserActivity([]);
         }
 
-        // Attach profile info
-        const { data: profs } = await supabase.from("profiles").select("user_id, full_name").in("user_id", Object.keys(byUser));
-        const { data: authUsers } = await supabase.from("profiles").select("user_id, full_name");
-        // We don't have email in profiles directly — use full_name as identifier
-        for (const p of profs || []) {
-            if (byUser[p.user_id]) {
-                byUser[p.user_id].name = p.full_name;
-            }
-        }
-
-        const activity = Object.entries(byUser).map(([uid, v]) => ({
-            userId: uid,
-            name: v.name || uid.slice(0, 8),
-            total: v.total,
-            spent: v.spent,
-            successRate: v.total > 0 ? ((v.sent / v.total) * 100).toFixed(1) : "0.0",
-            last: v.last,
-        }));
-        activity.sort((a, b) => b.total - a.total);
-        setUserActivity(activity);
+        setLoading(false);
     };
 
     const filteredActivity = userActivity.filter(
@@ -177,37 +182,43 @@ export function AdminAnalytics() {
                     <CardContent><p className="text-2xl font-bold text-warning">Rs. {(stats.totalTopups - stats.totalSpent).toFixed(2)}</p></CardContent></Card>
             </div>
 
-            {/* User Activity Logs */}
-            <Card className="glass">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-base">User Activity Logs</CardTitle>
-                    <Input placeholder="Search users..." className="w-48 h-8 text-sm" value={search} onChange={(e) => setSearch(e.target.value)} />
-                </CardHeader>
-                <CardContent className="p-0">
-                    <table className="w-full text-sm">
-                        <thead><tr className="border-b border-border">
-                            {["User", "Total SMS", "Total Spent", "Success Rate", "Last Activity"].map((h) => (
-                                <th key={h} className="text-left text-xs text-muted-foreground font-medium py-3 px-4">{h}</th>
-                            ))}
-                        </tr></thead>
-                        <tbody>
-                            {filteredActivity.length === 0 ? (
-                                <tr><td colSpan={5} className="text-center text-muted-foreground py-8">No data</td></tr>
-                            ) : filteredActivity.map((u) => (
-                                <tr key={u.userId} className="border-b border-border/50 hover:bg-accent/30 transition-colors">
-                                    <td className="py-3 px-4 font-medium">{u.name}</td>
-                                    <td className="py-3 px-4">{u.total.toLocaleString()}</td>
-                                    <td className="py-3 px-4">Rs. {u.spent.toFixed(2)}</td>
-                                    <td className="py-3 px-4">
-                                        <Badge variant="outline" className="bg-success/10 text-success border-success/20">{u.successRate}%</Badge>
-                                    </td>
-                                    <td className="py-3 px-4 text-muted-foreground">{format(new Date(u.last), "MMM dd, HH:mm")}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </CardContent>
-            </Card>
+            {/* User Activity Logs — only shown in All Users view */}
+            {selectedUser === "all" && (
+                <Card className="glass">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle className="text-base">User Activity Logs</CardTitle>
+                        <Input placeholder="Search users..." className="w-48 h-8 text-sm" value={search} onChange={(e) => setSearch(e.target.value)} />
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <table className="w-full text-sm">
+                            <thead><tr className="border-b border-border">
+                                {["User", "Total SMS", "Total Spent", "Success Rate", "Last Activity"].map((h) => (
+                                    <th key={h} className="text-left text-xs text-muted-foreground font-medium py-3 px-4">{h}</th>
+                                ))}
+                            </tr></thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr><td colSpan={5} className="text-center text-muted-foreground py-8">Loading...</td></tr>
+                                ) : filteredActivity.length === 0 ? (
+                                    <tr><td colSpan={5} className="text-center text-muted-foreground py-8">No data</td></tr>
+                                ) : filteredActivity.map((u) => (
+                                    <tr key={u.userId} className="border-b border-border/50 hover:bg-accent/30 transition-colors">
+                                        <td className="py-3 px-4 font-medium">{u.name}</td>
+                                        <td className="py-3 px-4">{u.total.toLocaleString()}</td>
+                                        <td className="py-3 px-4">Rs. {u.spent.toFixed(2)}</td>
+                                        <td className="py-3 px-4">
+                                            <Badge variant="outline" className="bg-success/10 text-success border-success/20">{u.successRate}%</Badge>
+                                        </td>
+                                        <td className="py-3 px-4 text-muted-foreground">
+                                            {u.last ? format(new Date(u.last), "MMM dd, HH:mm") : "—"}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

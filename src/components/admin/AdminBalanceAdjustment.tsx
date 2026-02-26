@@ -29,12 +29,34 @@ export function AdminBalanceAdjustment() {
     }, []);
 
     const loadHistory = async () => {
-        const { data } = await supabase
+        const { data: adjustments } = await supabase
             .from("balance_adjustments")
-            .select("*, profiles!balance_adjustments_user_id_fkey(full_name)")
+            .select("*")
             .order("created_at", { ascending: false })
             .limit(50);
-        setHistory(data || []);
+
+        if (!adjustments || adjustments.length === 0) {
+            setHistory([]);
+            return;
+        }
+
+        const userIds = [...new Set(adjustments.map((a: any) => a.user_id))];
+        const { data: profiles } = await supabase
+            .from("profiles")
+            .select("user_id, full_name")
+            .in("user_id", userIds);
+
+        const profileMap = (profiles || []).reduce((acc: any, p: any) => {
+            acc[p.user_id] = p;
+            return acc;
+        }, {});
+
+        const enrichedHistory = adjustments.map((adj: any) => ({
+            ...adj,
+            profiles: profileMap[adj.user_id] || { full_name: "Unknown" }
+        }));
+
+        setHistory(enrichedHistory);
     };
 
     const handleSubmit = async () => {

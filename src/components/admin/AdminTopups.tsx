@@ -46,43 +46,45 @@ export function AdminTopups() {
       <h1 className="font-display text-2xl font-bold mb-6">Top-up Requests</h1>
       <Card className="glass">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Note</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {requests.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No requests</TableCell></TableRow>
-              ) : requests.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="text-sm">{format(new Date(r.created_at), "MMM dd, HH:mm")}</TableCell>
-                  <TableCell className="font-medium">{(r as any).profiles?.full_name || "Unknown"}</TableCell>
-                  <TableCell className="font-semibold">Rs. {r.amount}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{r.note || "—"}</TableCell>
-                  <TableCell><Badge variant="outline" className={statusColor(r.status)}>{r.status}</Badge></TableCell>
-                  <TableCell className="text-right space-x-2">
-                    {r.status === "pending" && (
-                      <>
-                        <Button size="sm" variant="ghost" className="text-success hover:text-success" onClick={() => processTopup(r.id, "approved", r.user_id, r.amount)}>
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => processTopup(r.id, "rejected", r.user_id, r.amount)}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Note</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {requests.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No requests</TableCell></TableRow>
+                ) : requests.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="text-sm">{format(new Date(r.created_at), "MMM dd, HH:mm")}</TableCell>
+                    <TableCell className="font-medium">{(r as any).profiles?.full_name || "Unknown"}</TableCell>
+                    <TableCell className="font-semibold">Rs. {r.amount}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{r.note || "—"}</TableCell>
+                    <TableCell><Badge variant="outline" className={statusColor(r.status)}>{r.status}</Badge></TableCell>
+                    <TableCell className="text-right space-x-2">
+                      {r.status === "pending" && (
+                        <>
+                          <Button size="sm" variant="ghost" className="text-success hover:text-success" onClick={() => processTopup(r.id, "approved", r.user_id, r.amount)}>
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => processTopup(r.id, "rejected", r.user_id, r.amount)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
